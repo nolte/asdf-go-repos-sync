@@ -1,0 +1,9 @@
+---
+# These settings are synced to GitHub by https://probot.github.io/apps/settings/
+
+_extends: gh-plumbing:.github/commons-settings.yml
+
+repository:
+  name: asdf-go-repos-sync
+  description: asdf plugin for go-repos-sync
+  topics: asdf-plugin, asdf
