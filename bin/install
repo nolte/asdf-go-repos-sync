@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+
+# required environment variables
+: ${ASDF_INSTALL_TYPE?}
+: ${ASDF_INSTALL_VERSION?}
+: ${ASDF_INSTALL_PATH?}
+
+# detect the tool name
+readonly __dirname="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly toolname="$(basename "$(dirname "${__dirname}")")"
+
+# make a temporary download directory with a cleanup hook
+readonly TMP_DOWNLOAD_DIR="$(mktemp -d -t "asdf_${toolname}_XXXXXX")"
+trap 'rm -rf "${TMP_DOWNLOAD_DIR?}"' EXIT
+
+install() {
+  local install_type=$1
+  local version=$2
+  local install_path=$3
+  
+  local platform="$(uname | tr '[:upper:]' '[:lower:]')_amd64"
+  local bin_install_path="$install_path/bin"
+  local binary_path="$bin_install_path/go-repos-sync"
+  local -r download_url="$(get_download_url "${version}" "${platform}")"
+  local -r download_path="${TMP_DOWNLOAD_DIR}/$(get_filename ${version} ${platform})"
+
+  echo "Downloading ${toolname} version ${version} ${platform} from ${download_url}"
+  if curl -fL -o "${download_path}" "${download_url}"; then
+    echo "Cleaning ${toolname} previous binaries"
+    rm -rf "${bin_install_path}/${toolname}"
+
+    echo "Creating ${toolname} bin directory"
+    mkdir -p "${bin_install_path}"
+
+    echo "Extracting ${toolname} archive"
+    unzip -qq "${download_path}" -d "${bin_install_path}"
+  else
+    echo "Error: ${toolname} version ${version} not found" >&2
+    exit 1
+  fi
+}
+
+
+get_filename() {
+  local version="$1"
+  local platform="$2"
+  echo "go-repos-sync_${version}_${platform}.zip"
+}
+
+get_download_url() {
+  local version="$1"
+  local platform="$2"
+  local filename="$(get_filename $version $platform)"
+  echo "https://github.com/nolte/go-repos-sync/releases/download/v${version}/${filename}"
+}
+
+install $ASDF_INSTALL_TYPE $ASDF_INSTALL_VERSION $ASDF_INSTALL_PATH
